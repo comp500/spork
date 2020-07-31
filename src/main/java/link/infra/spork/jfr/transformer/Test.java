@@ -14,16 +14,13 @@ public class Test {
 		byte[] input = "..very cool text that should not be overwritten\r\n".getBytes();
 		ByteArrayInputStream bais = new ByteArrayInputStream(input);
 		BinaryPatcher patcher = new BinaryPatcher();
-		patcher.addPatch(2, 9, "Wow this is text".getBytes());
-		patcher.addLengthReference(0, 2, 9, (sourceOffset, newLength, patchConsumer) -> {
-			// TODO: just make this length -> bytes?
-			patchConsumer.addPatch(sourceOffset, 0, Integer.toString(newLength).getBytes());
-		});
-		patcher.addOffsetReference(16, 5, (sourceOffset, newOffsetReference, patchConsumer) -> {
-			patchConsumer.addPatch(sourceOffset, 0, Integer.toString(newOffsetReference).getBytes());
-		});
+		patcher.addPatch(2, 9, "Wow this is".getBytes());
+		patcher.addLengthReference(0, 2, 2, 9,
+			(length) -> Integer.toString(length).getBytes());
+//		patcher.addOffsetReference(16, 2,5,
+//			(referenceOffset, offset) -> Integer.toString(offset).getBytes());
 		int outputLength = patcher.processPositions(input.length);
-		try (FileChannel chan = FileChannel.open(Paths.get("test.txt"), StandardOpenOption.WRITE, StandardOpenOption.CREATE)) {
+		try (FileChannel chan = FileChannel.open(Paths.get("test.txt"), StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
 			chan.transferFrom(patcher.apply(Channels.newChannel(bais)), 0, outputLength);
 		}
 	}
