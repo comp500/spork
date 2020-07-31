@@ -1,0 +1,25 @@
+{
+	"schemaVersion": 1,
+	"id": "spork",
+	"version": "${version}",
+	"name": "Spork",
+	"description": "Hooks into JVM monitoring and remaps stacktraces for profilers",
+	"authors": [
+		"comp500"
+	],
+	"contact": {
+		"homepage": "https://github.com/comp500/spork",
+		"sources": "https://github.com/comp500/spork"
+	},
+	"license": "MIT",
+	"environment": "*",
+	"depends": {
+		"fabricloader": "*",
+		"minecraft": "*"
+	},
+	"entrypoints": {
+		"preLaunch": [
+			"link.infra.spork.Spork"
+		]
+	}
+}
