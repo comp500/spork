@@ -10,22 +10,22 @@ public class BinaryPatcher {
 	private final List<SerializedOffsetReference> offsetReferences = new ArrayList<>();
 	private final List<SerializedLengthReference> lengthReferences = new ArrayList<>();
 	private final List<Repositionable> references = new ArrayList<>();
-	private int sizeDelta = -1;
+	private long sizeDelta = -1;
 	
 	private interface Repositionable {
-		int getCurrentPosition();
-		void setNewPosition(int position);
+		long getCurrentPosition();
+		void setNewPosition(long position);
 	}
 
 	public static class SerializedOffsetReference {
-		private final int sourceReferenceOffset;
+		private final long sourceReferenceOffset;
 		private final int sourceReferenceLength;
-		private final int sourceOffset;
+		private final long sourceOffset;
 		private final Serializer serializer;
-		private int destOffset;
-		private int destReferenceOffset;
+		private long destOffset;
+		private long destReferenceOffset;
 
-		private SerializedOffsetReference(int sourceReferenceOffset, int sourceReferenceLength, int sourceOffset, Serializer serializer) {
+		private SerializedOffsetReference(long sourceReferenceOffset, int sourceReferenceLength, long sourceOffset, Serializer serializer) {
 			this.sourceReferenceOffset = sourceReferenceOffset;
 			this.sourceReferenceLength = sourceReferenceLength;
 			this.sourceOffset = sourceOffset;
@@ -33,18 +33,18 @@ public class BinaryPatcher {
 		}
 
 		public interface Serializer {
-			byte[] getReferenceData(int referenceOffset, int offset);
+			byte[] getReferenceData(long referenceOffset, long offset);
 		}
 
 		Repositionable reposReferenceOffset() {
 			return new Repositionable() {
 				@Override
-				public int getCurrentPosition() {
+				public long getCurrentPosition() {
 					return sourceReferenceOffset;
 				}
 
 				@Override
-				public void setNewPosition(int position) {
+				public void setNewPosition(long position) {
 					destReferenceOffset = position;
 				}
 			};
@@ -53,12 +53,12 @@ public class BinaryPatcher {
 		Repositionable reposOffset() {
 			return new Repositionable() {
 				@Override
-				public int getCurrentPosition() {
+				public long getCurrentPosition() {
 					return sourceOffset;
 				}
 
 				@Override
-				public void setNewPosition(int position) {
+				public void setNewPosition(long position) {
 					destOffset = position;
 				}
 			};
@@ -70,15 +70,15 @@ public class BinaryPatcher {
 	}
 
 	public static class SerializedLengthReference {
-		private final int sourceReferenceOffset;
+		private final long sourceReferenceOffset;
 		private final int sourceReferenceLength;
-		private final int sourceOffset;
-		private final int sourceLength;
+		private final long sourceOffset;
+		private final long sourceLength;
 		private final Serializer serializer;
-		private int destOffset;
-		private int destOffsetEnd;
+		private long destOffset;
+		private long destOffsetEnd;
 
-		public SerializedLengthReference(int sourceReferenceOffset, int sourceReferenceLength, int sourceOffset, int sourceLength, Serializer serializer) {
+		public SerializedLengthReference(long sourceReferenceOffset, int sourceReferenceLength, long sourceOffset, long sourceLength, Serializer serializer) {
 			this.sourceReferenceOffset = sourceReferenceOffset;
 			this.sourceReferenceLength = sourceReferenceLength;
 			this.sourceOffset = sourceOffset;
@@ -87,18 +87,18 @@ public class BinaryPatcher {
 		}
 
 		public interface Serializer {
-			byte[] getLengthData(int length);
+			byte[] getLengthData(long length);
 		}
 
 		Repositionable reposOffset() {
 			return new Repositionable() {
 				@Override
-				public int getCurrentPosition() {
+				public long getCurrentPosition() {
 					return sourceOffset;
 				}
 
 				@Override
-				public void setNewPosition(int position) {
+				public void setNewPosition(long position) {
 					destOffset = position;
 				}
 			};
@@ -107,12 +107,12 @@ public class BinaryPatcher {
 		Repositionable reposOffsetEnd() {
 			return new Repositionable() {
 				@Override
-				public int getCurrentPosition() {
+				public long getCurrentPosition() {
 					return sourceOffset + sourceLength;
 				}
 
 				@Override
-				public void setNewPosition(int position) {
+				public void setNewPosition(long position) {
 					destOffsetEnd = position;
 				}
 			};
@@ -124,33 +124,33 @@ public class BinaryPatcher {
 	}
 
 	private static class Patch {
-		private final int offset;
+		private final long offset;
 		private final int origLength;
 		private final byte[] bytes;
-		private int newOffset;
+		private long newOffset;
 
-		private Patch(int offset, int origLength, byte[] bytes) {
+		private Patch(long offset, int origLength, byte[] bytes) {
 			this.offset = offset;
 			this.origLength = origLength;
 			this.bytes = bytes;
 		}
 	}
 
-	public void addPatch(int offset, int origLength, byte[] bytes) {
+	public void addPatch(long offset, int origLength, byte[] bytes) {
 		patches.add(new Patch(offset, origLength, bytes));
 	}
 
 	// Note: Offset and length references aren't updated when offset and length reference patches move stuff around!
 	// TODO: relative offsets?!!
 
-	public void addOffsetReference(int referenceOffset, int referenceLength, int targetOffset, SerializedOffsetReference.Serializer serializer) {
+	public void addOffsetReference(long referenceOffset, int referenceLength, long targetOffset, SerializedOffsetReference.Serializer serializer) {
 		SerializedOffsetReference ref = new SerializedOffsetReference(referenceOffset, referenceLength, targetOffset, serializer);
 		offsetReferences.add(ref);
 		references.add(ref.reposReferenceOffset());
 		references.add(ref.reposOffset());
 	}
 
-	public void addLengthReference(int referenceOffset, int referenceLength, int targetOffset, int targetCurrentLength, SerializedLengthReference.Serializer serializer) {
+	public void addLengthReference(long referenceOffset, int referenceLength, long targetOffset, long targetCurrentLength, SerializedLengthReference.Serializer serializer) {
 		SerializedLengthReference ref = new SerializedLengthReference(referenceOffset, referenceLength, targetOffset, targetCurrentLength, serializer);
 		lengthReferences.add(ref);
 		references.add(ref.reposOffset());
@@ -159,10 +159,10 @@ public class BinaryPatcher {
 
 	void processPatches() {
 		// Sort patches/references by offset
-		patches.sort(Comparator.comparingInt(a -> a.offset));
-		references.sort(Comparator.comparingInt(Repositionable::getCurrentPosition));
+		patches.sort(Comparator.comparingLong(a -> a.offset));
+		references.sort(Comparator.comparingLong(Repositionable::getCurrentPosition));
 
-		int currentPositionDelta = 0;
+		long currentPositionDelta = 0;
 		Iterator<Patch> patchIter = patches.iterator();
 		Iterator<Repositionable> referenceIterator = references.iterator();
 		while (patchIter.hasNext() || referenceIterator.hasNext()) {
@@ -297,10 +297,11 @@ public class BinaryPatcher {
 			long startPosition = currentPosition;
 			while (bytesToSkip > 0) {
 				skipBuffer.clear();
-				skipBuffer.limit(Math.min(bytesToSkip, skipBuffer.capacity()));
+				int attempt = Math.min(bytesToSkip, skipBuffer.capacity());
+				skipBuffer.limit(attempt);
 				int bytesSkipped = delegate.read(skipBuffer);
 				if (bytesSkipped < 0) {
-					throw new SkipFailureException(currentPosition, startPosition, skipBuffer.limit());
+					throw new SkipFailureException(currentPosition, startPosition, attempt);
 				}
 				bytesToSkip -= bytesSkipped;
 			}
@@ -324,7 +325,7 @@ public class BinaryPatcher {
 		}
 	}
 
-	public int processPositions(int originalSize) {
+	public long processPositions(long originalSize) {
 		// Phase 1: apply patches
 		processPatches();
 		// Phase 2: make patches from reference serialisation, apply them again
