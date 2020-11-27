@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.util.*;
+import java.util.function.Supplier;
 
 public class BinaryPatcher {
 	private final List<Patch> patches = new ArrayList<>();
@@ -155,6 +156,28 @@ public class BinaryPatcher {
 		lengthReferences.add(ref);
 		references.add(ref.reposOffset());
 		references.add(ref.reposOffsetEnd());
+	}
+
+	public Supplier<Long> trackPosition(long offset) {
+		class TrackedPosition implements Repositionable {
+			private final long currentPosition;
+			private long newPosition;
+
+			TrackedPosition(long position) {
+				currentPosition = position;
+				newPosition = position;
+			}
+
+			@Override
+			public long getCurrentPosition() { return currentPosition; }
+
+			@Override
+			public void setNewPosition(long position) { newPosition = position; }
+		}
+
+		TrackedPosition pos = new TrackedPosition(offset);
+		references.add(pos);
+		return () -> pos.newPosition;
 	}
 
 	void processPatches() {
