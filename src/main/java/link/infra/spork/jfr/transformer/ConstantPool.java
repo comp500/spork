@@ -11,7 +11,8 @@ import java.util.List;
 public class ConstantPool {
 	private final Long2ObjectMap<TypeHandler<?>> handlers = new Long2ObjectOpenHashMap<>();
 
-	private static class ResolvableData<T> {
+	// TODO: clean up
+	public static class ResolvableData<T> {
 		private final T value;
 		private final long offset;
 		private final TypeHandler<T> typeHandler;
@@ -153,5 +154,11 @@ public class ConstantPool {
 		}
 
 		return delta;
+	}
+
+	// TODO: expose this cleaner
+	public Object parseValue(long typeId, RandomAccessFile file, BinaryPatcher patcher, boolean useCompressedInts) throws IOException {
+		TypeHandler<?> handler = handlers.get(typeId);
+		return handler.parser.parse(file, patcher, useCompressedInts, handlers);
 	}
 }

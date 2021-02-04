@@ -1,6 +1,5 @@
 package link.infra.spork;
 
-import link.infra.spork.jfr.SporkJFRHandler;
 import link.infra.spork.jfr.transformer.Test;
 import link.infra.spork.mappings.MappingsStore;
 import net.fabricmc.loader.api.FabricLoader;
@@ -36,7 +35,7 @@ public class Spork implements PreLaunchEntrypoint {
 
 		MappingsStore mappings;
 		// TODO: download mappings
-		try (BufferedReader reader = new BufferedReader(new FileReader("C:\\Users\\comp500\\.gradle\\caches\\fabric-loom\\mappings\\yarn-1.16.1+build.20-v2.tiny"))) {
+		try (BufferedReader reader = new BufferedReader(new FileReader("mappings.tiny"))) {
 			mappings = new MappingsStore(TinyMappingFactory.loadWithDetection(reader));
 		} catch (IOException e) {
 			LOGGER.error("Failed to load mappings for Spork", e);
@@ -55,7 +54,7 @@ public class Spork implements PreLaunchEntrypoint {
 
 		if (JAVA_VERSION > 8) {
 			// TODO: check this doesn't funky classload on java 8
-			SporkJFRHandler.handleJFR(mappings);
+			//SporkJFRHandler.handleJFR(mappings);
 		}
 	}
 }

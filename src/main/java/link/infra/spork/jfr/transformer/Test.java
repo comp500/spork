@@ -4,10 +4,6 @@ import link.infra.spork.jfr.transformer.binpatch.BinaryPatcher;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 
 public class Test {
 	public static void test() throws IOException {
@@ -30,9 +26,9 @@ public class Test {
 			RecordingReader.read(file, patcher);
 			fileSize = file.length();
 		}
-		patcher.processPositions(fileSize);
-		try (ReadableByteChannel chan = Files.newByteChannel(Paths.get("C:\\Users\\comp500\\Documents\\Gaming\\Minecraft\\Modding\\Misc\\jfrksy\\spork-jfr-remap-10278554402008797328.jfr"))) {
-			Files.copy(Channels.newInputStream(patcher.apply(chan)), Paths.get("C:\\Users\\comp500\\Documents\\Gaming\\Minecraft\\Modding\\Misc\\jfrksy\\sporkyes.jfr"));
-		}
+//		patcher.processPositions(fileSize);
+//		try (ReadableByteChannel chan = Files.newByteChannel(Paths.get("C:\\Users\\comp500\\Documents\\Gaming\\Minecraft\\Modding\\Misc\\jfrksy\\spork-jfr-remap-10278554402008797328.jfr"))) {
+//			Files.copy(Channels.newInputStream(patcher.apply(chan)), Paths.get("C:\\Users\\comp500\\Documents\\Gaming\\Minecraft\\Modding\\Misc\\jfrksy\\sporkyes.jfr"));
+//		}
 	}
 }

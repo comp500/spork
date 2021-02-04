@@ -16,6 +16,7 @@ public class MetadataParser {
 		public abstract Element constructChild(String childType);
 	}
 
+	// TODO: don't ignore unparsed data
 	public static class UnknownElement extends Element {
 		protected Map<String, String> attributes = new HashMap<>();
 		protected List<Element> children = new ArrayList<>();
@@ -50,6 +51,7 @@ public class MetadataParser {
 				metadata = new MetadataElement();
 				return metadata;
 			}
+			// TODO: region?
 			return new UnknownElement(childType);
 		}
 	}
@@ -104,6 +106,7 @@ public class MetadataParser {
 				fields.add(el);
 				return el;
 			}
+			// TODO: annotations?
 			return new UnknownElement(childType);
 		}
 	}
