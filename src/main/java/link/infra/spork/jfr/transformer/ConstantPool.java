@@ -2,6 +2,8 @@ package link.infra.spork.jfr.transformer;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import link.infra.spork.jfr.transformer.metadata.ClassElement;
+import link.infra.spork.jfr.transformer.metadata.FieldElement;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -44,11 +46,11 @@ public class ConstantPool {
 	}
 
 	private static class TypeHandler<T> {
-		public final MetadataParser.ClassElement classMetadata;
+		public final ClassElement classMetadata;
 		public final PoolElementParser<T> parser;
 		public final Long2ObjectMap<T> constants = new Long2ObjectOpenHashMap<>();
 
-		private TypeHandler(MetadataParser.ClassElement classMetadata, PoolElementParser<T> parser) {
+		private TypeHandler(ClassElement classMetadata, PoolElementParser<T> parser) {
 			this.classMetadata = classMetadata;
 			this.parser = parser;
 		}
@@ -58,13 +60,13 @@ public class ConstantPool {
 		T parse(RandomAccessFile file, boolean useCompressedInts, Long2ObjectMap<TypeHandler<?>> handlers) throws IOException;
 	}
 
-	public ConstantPool(List<MetadataParser.ClassElement> classList) {
-		for (MetadataParser.ClassElement el : classList) {
+	public ConstantPool(List<ClassElement> classList) {
+		for (ClassElement el : classList) {
 			handlers.put(el.id, createHandler(el));
 		}
 	}
 
-	private static TypeHandler<?> createHandler(MetadataParser.ClassElement el) {
+	private static TypeHandler<?> createHandler(ClassElement el) {
 		// TODO: handle class/method/symbol/package? specially
 		if (el.fields.size() == 1 && el.simple) {
 			// Parse only the first field
@@ -109,7 +111,7 @@ public class ConstantPool {
 				Object[] results = new Object[el.fields.size()];
 				// TODO: make finding parsers more efficient?
 				for (int i = 0; i < el.fields.size(); i++) {
-					MetadataParser.FieldElement field = el.fields.get(i);
+					FieldElement field = el.fields.get(i);
 					if (field.usesConstantPool) {
 						results[i] = new ResolvableData<>(handlers.get(field.classId), Util.readLong(file, useCompressedInts));
 					} else {

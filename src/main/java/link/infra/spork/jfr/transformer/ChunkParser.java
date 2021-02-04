@@ -1,5 +1,8 @@
 package link.infra.spork.jfr.transformer;
 
+import link.infra.spork.jfr.transformer.metadata.ClassElement;
+import link.infra.spork.jfr.transformer.metadata.FieldElement;
+import link.infra.spork.jfr.transformer.metadata.MetadataParser;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -33,7 +36,7 @@ public class ChunkParser {
 		public boolean useCompressedInts;
 	}
 
-	public static void read(RandomAccessFile file) throws IOException {
+	public static void read(RandomAccessFile file) throws IOException, TransformerParsingException {
 		ChunkHeader header = new ChunkHeader();
 		header.startPosition = file.getFilePointer();
 		byte[] magicRead = new byte[4];
@@ -62,7 +65,7 @@ public class ChunkParser {
 		header.useCompressedInts = (header.features & 1) != 0;
 
 		file.seek(header.startPosition + header.metadataOffset);
-		List<MetadataParser.ClassElement> classes = MetadataParser.read(file, header.useCompressedInts).metadata.classes;
+		List<ClassElement> classes = MetadataParser.read(file, header.useCompressedInts).metadata.classes;
 
 		ConstantPool pool = new ConstantPool(classes);
 		long currentDelta = header.constantPoolOffset;
@@ -89,8 +92,8 @@ public class ChunkParser {
 				System.out.println("Read constant pool event");
 				file.seek(startPos + size);
 			} else {
-				MetadataParser.ClassElement classElement = null;
-				for (MetadataParser.ClassElement classEl : classes) {
+				ClassElement classElement = null;
+				for (ClassElement classEl : classes) {
 					if (classEl.id == typeId) {
 						classElement = classEl;
 					}
@@ -106,7 +109,7 @@ public class ChunkParser {
 				if (value instanceof Object[]) {
 					Object[] arr = (Object[]) value;
 					for (int i = 0; i < classElement.fields.size(); i++) {
-						MetadataParser.FieldElement fieldEl = classElement.fields.get(i);
+						FieldElement fieldEl = classElement.fields.get(i);
 						Object value2 = arr[i];
 						if (value2 instanceof ConstantPool.ResolvableData<?>) {
 							System.out.println(fieldEl.name + ": " + ((ConstantPool.ResolvableData<?>) value2).get());
