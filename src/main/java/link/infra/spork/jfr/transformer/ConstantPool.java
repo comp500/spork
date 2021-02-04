@@ -132,15 +132,12 @@ public class ConstantPool {
 	}
 
 	public long read(RandomAccessFile file, boolean useCompressedInts) throws IOException {
-		// TODO: patch?
-		long currOffset = file.getFilePointer();
-		int eventSize = Util.readInt(file, useCompressedInts);
+		Util.readInt(file, useCompressedInts); // Event size
 		if (Util.readLong(file, useCompressedInts) != 1) {
 			throw new IOException("Invalid constant pool event");
 		}
 		Util.readLong(file, useCompressedInts); // Start time
 		Util.readLong(file, useCompressedInts); // Duration
-		// TODO: patch?
 		long delta = Util.readLong(file, useCompressedInts);
 		file.readByte(); // Flags
 		int typeCount = Util.readInt(file, useCompressedInts);

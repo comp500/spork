@@ -73,7 +73,6 @@ public class MetadataParser {
 
 	public static class ClassElement extends Element {
 		public long id;
-		// TODO: store offset for remap?
 		public String name;
 		public String superType;
 		public boolean simple;
