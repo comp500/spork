@@ -2,7 +2,6 @@ package link.infra.spork.jfr.transformer;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import link.infra.spork.jfr.transformer.binpatch.BinaryPatcher;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -56,7 +55,7 @@ public class ConstantPool {
 	}
 
 	private interface PoolElementParser<T> {
-		T parse(RandomAccessFile file, BinaryPatcher patcher, boolean useCompressedInts, Long2ObjectMap<TypeHandler<?>> handlers) throws IOException;
+		T parse(RandomAccessFile file, boolean useCompressedInts, Long2ObjectMap<TypeHandler<?>> handlers) throws IOException;
 	}
 
 	public ConstantPool(List<MetadataParser.ClassElement> classList) {
@@ -72,12 +71,12 @@ public class ConstantPool {
 			if (el.fields.get(0).usesConstantPool) {
 				throw new RuntimeException("This wasn't supposed to happen!!");
 			}
-			return new TypeHandler<>(el, (file, patcher, useCompressedInts, handlers) ->
-				handlers.get(el.fields.get(0).classId).parser.parse(file, patcher, useCompressedInts, handlers));
+			return new TypeHandler<>(el, (file, useCompressedInts, handlers) ->
+				handlers.get(el.fields.get(0).classId).parser.parse(file, useCompressedInts, handlers));
 		} else if (el.fields.isEmpty() && el.superType == null) {
 			switch (el.name) {
 				case "java.lang.String":
-					return new TypeHandler<>(el, (file, patcher, useCompressedInts, handlers) -> {
+					return new TypeHandler<>(el, (file, useCompressedInts, handlers) -> {
 						long offset = file.getFilePointer();
 						byte encoding = file.readByte();
 						if (encoding == Util.STRING_TYPE_CONSTANT_POOL) {
@@ -87,26 +86,26 @@ public class ConstantPool {
 						}
 					});
 				case "boolean":
-					return new TypeHandler<>(el, (file, patcher, useCompressedInts, handlers) -> file.readBoolean());
+					return new TypeHandler<>(el, (file, useCompressedInts, handlers) -> file.readBoolean());
 				case "byte":
-					return new TypeHandler<>(el, (file, patcher, useCompressedInts, handlers) -> file.readByte());
+					return new TypeHandler<>(el, (file, useCompressedInts, handlers) -> file.readByte());
 				case "short":
-					return new TypeHandler<>(el, (file, patcher, useCompressedInts, handlers) -> Util.readShort(file, useCompressedInts));
+					return new TypeHandler<>(el, (file, useCompressedInts, handlers) -> Util.readShort(file, useCompressedInts));
 				case "char":
-					return new TypeHandler<>(el, (file, patcher, useCompressedInts, handlers) -> Util.readChar(file, useCompressedInts));
+					return new TypeHandler<>(el, (file, useCompressedInts, handlers) -> Util.readChar(file, useCompressedInts));
 				case "int":
-					return new TypeHandler<>(el, (file, patcher, useCompressedInts, handlers) -> Util.readInt(file, useCompressedInts));
+					return new TypeHandler<>(el, (file, useCompressedInts, handlers) -> Util.readInt(file, useCompressedInts));
 				case "long":
-					return new TypeHandler<>(el, (file, patcher, useCompressedInts, handlers) -> Util.readLong(file, useCompressedInts));
+					return new TypeHandler<>(el, (file, useCompressedInts, handlers) -> Util.readLong(file, useCompressedInts));
 				case "float":
-					return new TypeHandler<>(el, (file, patcher, useCompressedInts, handlers) -> file.readFloat());
+					return new TypeHandler<>(el, (file, useCompressedInts, handlers) -> file.readFloat());
 				case "double":
-					return new TypeHandler<>(el, (file, patcher, useCompressedInts, handlers) -> file.readDouble());
+					return new TypeHandler<>(el, (file, useCompressedInts, handlers) -> file.readDouble());
 				default:
 					throw new RuntimeException("Failed to create parser for field " + el.name);
 			}
 		} else {
-			return new TypeHandler<>(el, (file, patcher, useCompressedInts, handlers) -> {
+			return new TypeHandler<>(el, (file, useCompressedInts, handlers) -> {
 				Object[] results = new Object[el.fields.size()];
 				// TODO: make finding parsers more efficient?
 				for (int i = 0; i < el.fields.size(); i++) {
@@ -114,7 +113,7 @@ public class ConstantPool {
 					if (field.usesConstantPool) {
 						results[i] = new ResolvableData<>(handlers.get(field.classId), Util.readLong(file, useCompressedInts));
 					} else {
-						results[i] = handlers.get(field.classId).parser.parse(file, patcher, useCompressedInts, handlers);
+						results[i] = handlers.get(field.classId).parser.parse(file, useCompressedInts, handlers);
 					}
 				}
 				return results;
@@ -122,22 +121,20 @@ public class ConstantPool {
 		}
 	}
 
-	private <T> void readConstants(TypeHandler<T> handler, RandomAccessFile file, BinaryPatcher patcher, boolean useCompressedInts) throws IOException {
+	private <T> void readConstants(TypeHandler<T> handler, RandomAccessFile file, boolean useCompressedInts) throws IOException {
 		int constantCount = Util.readInt(file, useCompressedInts);
 		for (int j = 0; j < constantCount; j++) {
 			long constantIndex = Util.readLong(file, useCompressedInts);
-			T value = handler.parser.parse(file, patcher, useCompressedInts, handlers);
+			T value = handler.parser.parse(file, useCompressedInts, handlers);
 			handler.constants.put(constantIndex, value);
 		}
 		System.out.println("Stored " + constantCount + " of " + handler.classMetadata.name);
 	}
 
-	public long read(RandomAccessFile file, BinaryPatcher patcher, boolean useCompressedInts) throws IOException {
+	public long read(RandomAccessFile file, boolean useCompressedInts) throws IOException {
 		// TODO: patch?
 		long currOffset = file.getFilePointer();
 		int eventSize = Util.readInt(file, useCompressedInts);
-		patcher.addLengthReference(currOffset, (int) (file.getFilePointer() - currOffset), currOffset, eventSize, length ->
-			Util.getIntBytes((int) length, useCompressedInts));
 		if (Util.readLong(file, useCompressedInts) != 1) {
 			throw new IOException("Invalid constant pool event");
 		}
@@ -150,15 +147,15 @@ public class ConstantPool {
 		for (int i = 0; i < typeCount; i++) {
 			long classId = Util.readLong(file, useCompressedInts);
 			TypeHandler<?> handler = handlers.get(classId);
-			readConstants(handler, file, patcher, useCompressedInts);
+			readConstants(handler, file, useCompressedInts);
 		}
 
 		return delta;
 	}
 
 	// TODO: expose this cleaner
-	public Object parseValue(long typeId, RandomAccessFile file, BinaryPatcher patcher, boolean useCompressedInts) throws IOException {
+	public Object parseValue(long typeId, RandomAccessFile file, boolean useCompressedInts) throws IOException {
 		TypeHandler<?> handler = handlers.get(typeId);
-		return handler.parser.parse(file, patcher, useCompressedInts, handlers);
+		return handler.parser.parse(file, useCompressedInts, handlers);
 	}
 }

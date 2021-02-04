@@ -1,7 +1,5 @@
 package link.infra.spork.jfr.transformer;
 
-import com.google.common.primitives.Longs;
-import link.infra.spork.jfr.transformer.binpatch.BinaryPatcher;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -9,7 +7,6 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Supplier;
 
 public class ChunkParser {
 	private static final byte[] MAGIC = "FLR\0".getBytes();
@@ -36,10 +33,9 @@ public class ChunkParser {
 		public boolean useCompressedInts;
 	}
 
-	public static void read(RandomAccessFile file, BinaryPatcher patcher) throws IOException {
+	public static void read(RandomAccessFile file) throws IOException {
 		ChunkHeader header = new ChunkHeader();
 		header.startPosition = file.getFilePointer();
-		Supplier<Long> startPositionOffsetSupplier = patcher.trackPosition(header.startPosition);
 		byte[] magicRead = new byte[4];
 		file.readFully(magicRead);
 		if (!Arrays.equals(magicRead, MAGIC)) {
@@ -56,13 +52,8 @@ public class ChunkParser {
 			LOGGER.warn("Minor version " + ver + " may not work correctly!");
 		}
 		header.chunkSize = file.readLong();
-		patcher.addLengthReference(file.getFilePointer() - 8, 8, header.startPosition, header.chunkSize, Longs::toByteArray);
 		header.constantPoolOffset = file.readLong();
-		patcher.addOffsetReference(file.getFilePointer() - 8, 8, header.constantPoolOffset, (referenceOffset, offset) ->
-			Longs.toByteArray(offset - startPositionOffsetSupplier.get()));
 		header.metadataOffset = file.readLong();
-		patcher.addOffsetReference(file.getFilePointer() - 8, 8, header.metadataOffset, (referenceOffset, offset) ->
-			Longs.toByteArray(offset - startPositionOffsetSupplier.get()));
 		header.startNanos = file.readLong();
 		header.durationNanos = file.readLong();
 		header.startTicks = file.readLong();
@@ -71,7 +62,7 @@ public class ChunkParser {
 		header.useCompressedInts = (header.features & 1) != 0;
 
 		file.seek(header.startPosition + header.metadataOffset);
-		List<MetadataParser.ClassElement> classes = MetadataParser.read(file, patcher, header.useCompressedInts).metadata.classes;
+		List<MetadataParser.ClassElement> classes = MetadataParser.read(file, header.useCompressedInts).metadata.classes;
 
 		ConstantPool pool = new ConstantPool(classes);
 		long currentDelta = header.constantPoolOffset;
@@ -80,7 +71,7 @@ public class ChunkParser {
 		while (currentDelta != 0) {
 			currentConstantPoolPosition += currentDelta;
 			file.seek(currentConstantPoolPosition);
-			currentDelta = pool.read(file, patcher, header.useCompressedInts);
+			currentDelta = pool.read(file, header.useCompressedInts);
 		}
 
 		// Seek to the start of the chunk
@@ -110,26 +101,26 @@ public class ChunkParser {
 				}
 				System.out.println("Read event " + typeId + " " + classElement.name);
 
-				Object value = pool.parseValue(typeId, file, patcher, header.useCompressedInts);
+				Object value = pool.parseValue(typeId, file, header.useCompressedInts);
 
-//				if (value instanceof Object[]) {
-//					Object[] arr = (Object[]) value;
-//					for (int i = 0; i < classElement.fields.size(); i++) {
-//						MetadataParser.FieldElement fieldEl = classElement.fields.get(i);
-//						Object value2 = arr[i];
-//						if (value2 instanceof ConstantPool.ResolvableData<?>) {
-//							System.out.println(fieldEl.name + ": " + ((ConstantPool.ResolvableData<?>) value2).get());
-//						} else {
-//							System.out.println(fieldEl.name + ": " + value2);
-//						}
-//					}
-//				} else {
-//					if (value instanceof ConstantPool.ResolvableData<?>) {
-//						System.out.println(((ConstantPool.ResolvableData<?>) value).get());
-//					} else {
-//						System.out.println(value);
-//					}
-//				}
+				if (value instanceof Object[]) {
+					Object[] arr = (Object[]) value;
+					for (int i = 0; i < classElement.fields.size(); i++) {
+						MetadataParser.FieldElement fieldEl = classElement.fields.get(i);
+						Object value2 = arr[i];
+						if (value2 instanceof ConstantPool.ResolvableData<?>) {
+							System.out.println(fieldEl.name + ": " + ((ConstantPool.ResolvableData<?>) value2).get());
+						} else {
+							System.out.println(fieldEl.name + ": " + value2);
+						}
+					}
+				} else {
+					if (value instanceof ConstantPool.ResolvableData<?>) {
+						System.out.println(((ConstantPool.ResolvableData<?>) value).get());
+					} else {
+						System.out.println(value);
+					}
+				}
 			}
 		}
 

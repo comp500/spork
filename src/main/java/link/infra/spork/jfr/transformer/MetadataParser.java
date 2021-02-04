@@ -1,7 +1,5 @@
 package link.infra.spork.jfr.transformer;
 
-import link.infra.spork.jfr.transformer.binpatch.BinaryPatcher;
-
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
@@ -141,7 +139,7 @@ public class MetadataParser {
 		}
 	}
 
-	public static RootElement read(RandomAccessFile file, BinaryPatcher patcher, boolean useCompressedInts) throws IOException {
+	public static RootElement read(RandomAccessFile file, boolean useCompressedInts) throws IOException {
 		Util.readInt(file, useCompressedInts); // Event size
 		if (Util.readLong(file, useCompressedInts) != 0) {
 			throw new IOException("Invalid metadata event");
