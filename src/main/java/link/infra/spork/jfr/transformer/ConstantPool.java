@@ -112,6 +112,7 @@ public class ConstantPool {
 				// TODO: make finding parsers more efficient?
 				for (int i = 0; i < el.fields.size(); i++) {
 					FieldElement field = el.fields.get(i);
+					// TODO: handle field.dimension (indicates array) properly? or is it not necessary
 					if (field.usesConstantPool) {
 						results[i] = new ResolvableData<>(handlers.get(field.classId), Util.readLong(file, useCompressedInts));
 					} else {

@@ -1,15 +1,13 @@
 package link.infra.spork.jfr.transformer;
 
-import link.infra.spork.jfr.transformer.metadata.ClassElement;
-import link.infra.spork.jfr.transformer.metadata.FieldElement;
-import link.infra.spork.jfr.transformer.metadata.MetadataParser;
+import link.infra.spork.jfr.transformer.metadata.serialization.JFRMetadata;
+import link.infra.spork.jfr.transformer.metadata.serialization.MetadataParser;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
-import java.util.List;
 
 public class ChunkParser {
 	private static final byte[] MAGIC = "FLR\0".getBytes();
@@ -65,67 +63,69 @@ public class ChunkParser {
 		header.useCompressedInts = (header.features & 1) != 0;
 
 		file.seek(header.startPosition + header.metadataOffset);
-		List<ClassElement> classes = MetadataParser.read(file, header.useCompressedInts).metadata.classes;
+		//MetadataParser.read(file, header.useCompressedInts).metadata.classes;
 
-		ConstantPool pool = new ConstantPool(classes);
-		long currentDelta = header.constantPoolOffset;
-		long currentConstantPoolPosition = header.startPosition;
-		// TODO: parse first constant pool, then all the events between 0 and constant pool, then second constant pool, etc.?
-		while (currentDelta != 0) {
-			currentConstantPoolPosition += currentDelta;
-			file.seek(currentConstantPoolPosition);
-			currentDelta = pool.read(file, header.useCompressedInts);
-		}
+		JFRMetadata meta = MetadataParser.read(file, header.useCompressedInts);
+
+//		ConstantPool pool = new ConstantPool(classes);
+//		long currentDelta = header.constantPoolOffset;
+//		long currentConstantPoolPosition = header.startPosition;
+//		// TODO: parse first constant pool, then all the events between 0 and constant pool, then second constant pool, etc.?
+//		while (currentDelta != 0) {
+//			currentConstantPoolPosition += currentDelta;
+//			file.seek(currentConstantPoolPosition);
+//			currentDelta = pool.read(file, header.useCompressedInts);
+//		}
 
 		// Seek to the start of the chunk
 		file.seek(header.startPosition + 68);
 
-		while (file.getFilePointer() < header.startPosition + header.chunkSize) {
-			long startPos = file.getFilePointer();
-			int size = Util.readInt(file, header.useCompressedInts);
-			long typeId = Util.readLong(file, header.useCompressedInts);
-
-			if (typeId == 0) {
-				System.out.println("Read metadata event");
-				file.seek(startPos + size);
-			} else if (typeId == 1) {
-				System.out.println("Read constant pool event");
-				file.seek(startPos + size);
-			} else {
-				ClassElement classElement = null;
-				for (ClassElement classEl : classes) {
-					if (classEl.id == typeId) {
-						classElement = classEl;
-					}
-				}
-				if (classElement == null) {
-					System.out.println("Read unknown event " + typeId);
-					file.seek(startPos + size);
-				}
-				System.out.println("Read event " + typeId + " " + classElement.name);
-
-				Object value = pool.parseValue(typeId, file, header.useCompressedInts);
-
-				if (value instanceof Object[]) {
-					Object[] arr = (Object[]) value;
-					for (int i = 0; i < classElement.fields.size(); i++) {
-						FieldElement fieldEl = classElement.fields.get(i);
-						Object value2 = arr[i];
-						if (value2 instanceof ConstantPool.ResolvableData<?>) {
-							System.out.println(fieldEl.name + ": " + ((ConstantPool.ResolvableData<?>) value2).get());
-						} else {
-							System.out.println(fieldEl.name + ": " + value2);
-						}
-					}
-				} else {
-					if (value instanceof ConstantPool.ResolvableData<?>) {
-						System.out.println(((ConstantPool.ResolvableData<?>) value).get());
-					} else {
-						System.out.println(value);
-					}
-				}
-			}
-		}
+//		while (file.getFilePointer() < header.startPosition + header.chunkSize) {
+//			long startPos = file.getFilePointer();
+//			int size = Util.readInt(file, header.useCompressedInts);
+//			long typeId = Util.readLong(file, header.useCompressedInts);
+//
+//			if (typeId == 0) {
+//				System.out.println("Read metadata event");
+//				file.seek(startPos + size);
+//			} else if (typeId == 1) {
+//				System.out.println("Read constant pool event");
+//				file.seek(startPos + size);
+//			} else {
+//				ClassElement classElement = null;
+//				for (ClassElement classEl : classes) {
+//					if (classEl.id == typeId) {
+//						classElement = classEl;
+//					}
+//				}
+//				if (classElement == null) {
+//					System.out.println("Read unknown event " + typeId);
+//					file.seek(startPos + size);
+//				}
+//				System.out.println("Read event " + typeId + " " + classElement.name);
+//
+//				Object value = pool.parseValue(typeId, file, header.useCompressedInts);
+//
+//				if (value instanceof Object[]) {
+//					Object[] arr = (Object[]) value;
+//					for (int i = 0; i < classElement.fields.size(); i++) {
+//						FieldElement fieldEl = classElement.fields.get(i);
+//						Object value2 = arr[i];
+//						if (value2 instanceof ConstantPool.ResolvableData<?>) {
+//							System.out.println(fieldEl.name + ": " + ((ConstantPool.ResolvableData<?>) value2).get());
+//						} else {
+//							System.out.println(fieldEl.name + ": " + value2);
+//						}
+//					}
+//				} else {
+//					if (value instanceof ConstantPool.ResolvableData<?>) {
+//						System.out.println(((ConstantPool.ResolvableData<?>) value).get());
+//					} else {
+//						System.out.println(value);
+//					}
+//				}
+//			}
+//		}
 
 		// Seek to the end of the chunk
 		file.seek(header.startPosition + header.chunkSize);
